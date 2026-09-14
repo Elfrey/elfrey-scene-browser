@@ -7,8 +7,8 @@
  * after indexing, when the model is rebuilt.
  */
 import { MODULE_ID, TEMPLATES, SETTINGS, getSetting, setSetting, log } from "../settings.js";
-import { summarizeSources } from "../sources.js";
-import { SceneCache } from "../cache.js";
+import { listScenePackSources, summarizeSources } from "../sources.js";
+import { SceneCache, filePicker } from "../cache.js";
 import { SceneIndexer } from "../indexer.js";
 import { buildModel } from "../model.js";
 import { tokenize, matchesTokens } from "../search.js";
@@ -72,7 +72,9 @@ export class SceneBrowserApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const stats = summarizeSources();
     const totals = this.cache.totals();
     const fmt = new Intl.DateTimeFormat(game.i18n.lang, { dateStyle: "short", timeStyle: "short" });
+    const v14 = await this.#v14CacheState(stats);
     return {
+      v14,
       query: this.#query,
       total: this.model.stats.total,
       canRead: SceneIndexer.fileAccess ?? (Number(game.version?.split(".")[0]) <= 13),
@@ -84,6 +86,28 @@ export class SceneBrowserApp extends HandlebarsApplicationMixin(ApplicationV2) {
       },
       inactiveModules: stats.inactiveModules
     };
+  }
+
+  /**
+   * On Foundry v14 the browser cannot read pack files, so disabled modules rely on a cache built with
+   * tools/build-cache.mjs. Report whether that cache needs (re)building or lacks full-scene documents,
+   * so the window can show a persistent banner (easier to notice than a load-time toast).
+   */
+  async #v14CacheState() {
+    if ( Number(game.version?.split(".")[0]) < 14 ) return null;
+    const dormant = listScenePackSources().filter(src => !src.live);
+    if ( !dormant.length ) return null;
+    const packages = new Set();
+    for ( const src of dormant ) {
+      const entry = this.cache.get(src.collection);
+      if ( !entry || (entry.package?.version !== src.packageVersion) ) packages.add(src.packageId);
+    }
+    let hasFullScenes = false;
+    try {
+      const result = await filePicker().browse("data", `${SceneCache.configuredDir}/scenes`);
+      hasFullScenes = ((result?.dirs?.length ?? 0) + (result?.files?.length ?? 0)) > 0;
+    } catch ( err ) { hasFullScenes = false; }
+    return { needsCache: packages.size, needsFullScenes: !hasFullScenes };
   }
 
   /* ------------------------------ render ------------------------------ */

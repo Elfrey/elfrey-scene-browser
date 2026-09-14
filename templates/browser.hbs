@@ -49,6 +49,8 @@
   </div>
 
   {{#unless canRead}}<p class="notification warning esb-banner">{{localize "ESB.Notices.NoFileAccess"}}</p>{{/unless}}
+  {{#if v14.needsCache}}<p class="notification warning esb-banner">{{localize "ESB.CacheWarning.Message" count=v14.needsCache}}</p>{{/if}}
+  {{#if v14.needsFullScenes}}<p class="notification warning esb-banner">{{localize "ESB.CacheWarning.NoFullScenes"}}</p>{{/if}}
   {{#if cache.staleFiles}}<p class="notification info esb-banner">{{localize "ESB.Indexing.StaleFiles" count=cache.staleFiles dir=cache.dir}}</p>{{/if}}
   {{#if cache.empty}}<p class="notification info esb-banner">{{localize "ESB.Notices.CacheEmpty"}}</p>{{/if}}
 

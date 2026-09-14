@@ -1,0 +1,199 @@
+{
+  "ESB": {
+    "Title": "Scene Browser",
+    "Button": {
+      "Open": "Scene Browser",
+      "OpenTooltip": "Browse scenes from every module, active or not"
+    },
+    "Keybinding": {
+      "Open": {
+        "Name": "Open Scene Browser",
+        "Hint": "Opens the browser of all scenes from modules, the system and the world."
+      }
+    },
+    "Actions": {
+      "Index": "Index",
+      "Refresh": "Refresh"
+    },
+    "Stats": {
+      "WorldScenes": "World scenes",
+      "Packs": "Scene packs",
+      "Live": "live",
+      "Dormant": "dormant",
+      "Modules": "Modules with scenes"
+    },
+    "Status": {
+      "Active": "active",
+      "Inactive": "inactive"
+    },
+    "Notices": {
+      "NoFileAccess": "This Foundry version does not serve compendium database files to the browser. Scenes of inactive modules will be available only from a previously built cache.",
+      "IndexerNotYet": "The indexer is not implemented yet (phase 2).",
+      "CacheEmpty": "The cache is empty. Click Index to read compendium files of inactive modules; active packs, the system and the world are shown live.",
+      "ReadingPack": "Reading pack {label}…",
+      "Imported": "Imported scene “{name}”.",
+      "Copied": "Copied to clipboard."
+    },
+    "Settings": {
+      "ImportFolder": {
+        "Name": "Folder for imported scenes",
+        "Hint": "Root world folder for imported scenes; each scene is placed under it in “module › inner folder” subfolders. Leave empty to nest directly by module."
+      },
+      "IndexActivePacks": {
+        "Name": "Also index packs of active packages",
+        "Hint": "Read the database files of active packs too, to get wall/token/light counts. Costs extra download on the first run; later runs only re-read changed packs."
+      },
+      "CardSize": {
+        "Name": "Card size",
+        "Small": "Small",
+        "Medium": "Medium",
+        "Large": "Large"
+      },
+      "RememberState": {
+        "Name": "Remember browser state",
+        "Hint": "Keep the search, filters, expanded tree nodes and the last selected scene between sessions."
+      },
+      "ShowInactive": {
+        "Name": "Show inactive modules by default",
+        "Hint": "Whether scenes of inactive modules are visible when the browser opens."
+      },
+      "CacheDir": {
+        "Name": "Cache folder",
+        "Hint": "Folder inside Data where the scene index is stored (one file per pack, versioned). Default: elfrey-scene-browser"
+      }
+    },
+    "Cache": {
+      "Empty": "empty",
+      "Errors": "errors"
+    },
+    "Errors": {
+      "UploadFailed": "The server did not accept the cache file.",
+      "ImportFailed": "Import failed: {error}",
+      "SceneNotFound": "Scene not found in the pack.",
+      "PackNotConnected": "That compendium is not connected (module disabled).",
+      "NoImage": "This scene has no image."
+    },
+    "Indexing": {
+      "Title": "Indexing scenes",
+      "Planning": "Checking packs…",
+      "Hint": "Only packs that changed since the last run are read again. The download estimate covers pack database files only; thumbnails are not loaded.",
+      "Plan": {
+        "Read": "Packs to read from files",
+        "Api": "Connected packs to read through the API",
+        "Unchanged": "Unchanged, skipped",
+        "Unavailable": "Unavailable (files not served, pack not connected)",
+        "Missing": "Declared but missing on disk",
+        "Errors": "Could not be probed"
+      },
+      "Packs": "Packs",
+      "Scenes": "Scenes",
+      "Start": "Start",
+      "Cancel": "Cancel",
+      "Close": "Close",
+      "Done": "Indexing finished.",
+      "Cancelled": "Indexing cancelled; packs finished so far were saved.",
+      "Result": {
+        "Ok": "Packs indexed",
+        "Failed": "Failed",
+        "Warnings": "Format warnings"
+      },
+      "StaleFiles": "{count} superseded cache file(s) can be deleted by hand from {dir} (Foundry does not let a module delete files)."
+    },
+    "SearchPlaceholder": "Search scenes…",
+    "ShownCount": "{shown} of {total}",
+    "InactiveShort": "modules off",
+    "Tree": {
+      "World": "World",
+      "System": "System",
+      "Modules": "Modules",
+      "WorldScenes": "World scenes",
+      "Adventure": "Adventure"
+    },
+    "PackStatus": {
+      "live": "connected",
+      "cache": "from cache",
+      "stale": "cache outdated",
+      "error": "error",
+      "unindexed": "not indexed",
+      "world": "world"
+    },
+    "OriginLabel": {
+      "world": "world",
+      "live": "connected pack",
+      "cache": "cache (inactive module)"
+    },
+    "Details": {
+      "None": "Select a scene to see its details.",
+      "Package": "Package",
+      "Pack": "Compendium",
+      "Size": "Size",
+      "Cells": "cells",
+      "Grid": "Grid",
+      "System": "System",
+      "Core": "core",
+      "Modified": "Modified",
+      "Origin": "Source",
+      "Uuid": "UUID",
+      "InactiveNote": "Module is disabled: importing re-reads the pack; linked actors are not resolved.",
+      "Adventure": "Adventure"
+    },
+    "Counts": {
+      "tokens": "tokens",
+      "walls": "walls",
+      "lights": "lights",
+      "notes": "notes",
+      "tiles": "tiles",
+      "sounds": "sounds",
+      "drawings": "drawings",
+      "regions": "regions",
+      "templates": "templates"
+    },
+    "Filter": {
+      "Status": {
+        "All": "All sources",
+        "Active": "Active modules",
+        "Inactive": "Inactive modules"
+      },
+      "Grid": {
+        "All": "Any grid",
+        "Square": "Square",
+        "Hex": "Hex",
+        "Gridless": "Gridless"
+      },
+      "Size": {
+        "All": "Any size",
+        "S": "≤ 20 cells",
+        "M": "21–40",
+        "L": "41–80",
+        "XL": "> 80"
+      },
+      "Content": {
+        "All": "Any content"
+      },
+      "System": {
+        "All": "Any system",
+        "None": "no system"
+      }
+    },
+    "Sort": {
+      "Label": "Sort:",
+      "Name": "Name",
+      "Package": "Package",
+      "Size": "Size",
+      "Modified": "Modified",
+      "Walls": "Walls"
+    },
+    "Action": {
+      "View": "View",
+      "Activate": "Activate",
+      "Import": "Import",
+      "ImportView": "Import & view",
+      "ShowCompendium": "Show in compendium",
+      "Image": "Image",
+      "CopyUuid": "Copy UUID",
+      "CopyPath": "Copy path"
+    },
+    "Selected": "Selected",
+    "SelectedClear": "Clear selection"
+  }
+}

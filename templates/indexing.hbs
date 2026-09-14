@@ -1,0 +1,87 @@
+<section class="esb-indexing-body">
+
+  {{#if isPlanning}}
+  <p><i class="fa-solid fa-spinner fa-spin" inert></i> {{localize "ESB.Indexing.Planning"}} <span data-planning></span></p>
+  {{/if}}
+
+  {{#if error}}
+  <p class="notification error">{{error}}</p>
+  {{/if}}
+
+  {{#if isReady}}
+    {{#unless summary.fileAccess}}
+    <p class="notification warning">{{localize "ESB.Notices.NoFileAccess"}}</p>
+    {{/unless}}
+    <table class="esb-plan">
+      <tbody>
+        <tr><td>{{localize "ESB.Indexing.Plan.Read"}}</td><td class="num">{{summary.read}}</td><td class="note">≈ {{summary.mb}} MB</td></tr>
+        <tr><td>{{localize "ESB.Indexing.Plan.Api"}}</td><td class="num">{{summary.api}}</td><td class="note"></td></tr>
+        <tr><td>{{localize "ESB.Indexing.Plan.Unchanged"}}</td><td class="num">{{summary.unchanged}}</td><td class="note"></td></tr>
+        {{#if summary.unavailable}}<tr><td>{{localize "ESB.Indexing.Plan.Unavailable"}}</td><td class="num">{{summary.unavailable}}</td><td class="note"></td></tr>{{/if}}
+        {{#if summary.missing}}<tr><td>{{localize "ESB.Indexing.Plan.Missing"}}</td><td class="num">{{summary.missing}}</td><td class="note"></td></tr>{{/if}}
+        {{#if summary.errors}}<tr><td>{{localize "ESB.Indexing.Plan.Errors"}}</td><td class="num">{{summary.errors}}</td><td class="note"></td></tr>{{/if}}
+      </tbody>
+    </table>
+    <label class="esb-checkbox">
+      <input type="checkbox" data-action="toggleLive" {{#if includeLive}}checked{{/if}}>
+      <span>{{localize "ESB.Settings.IndexActivePacks.Name"}}</span>
+    </label>
+    <p class="hint">{{localize "ESB.Indexing.Hint"}}</p>
+  {{/if}}
+
+  {{#if isRunning}}
+    <div class="esb-progress-bar"><span style="width: {{progress.percent}}%"></span></div>
+    <div class="esb-progress-row">
+      <span data-progress-bytes>{{progress.loadedMB}} / {{progress.totalMB}} MB</span>
+      <span>{{localize "ESB.Indexing.Packs"}}: {{progress.done}} / {{progress.total}}</span>
+      <span>{{localize "ESB.Indexing.Scenes"}}: {{progress.scenes}}</span>
+    </div>
+    <p class="esb-progress-current"><i class="fa-solid fa-spinner fa-spin" inert></i> <span data-progress-current>{{progress.currentLabel}}</span></p>
+    <ul class="esb-results">
+      {{#each progress.recent}}
+      <li class="{{status}}"><i class="fa-solid {{#if (eq status "ok")}}fa-check{{else}}fa-triangle-exclamation{{/if}}" inert></i>
+        {{packageTitle}} › {{label}} — {{#if (eq status "ok")}}{{scenes}}{{else}}{{error}}{{/if}}</li>
+      {{/each}}
+    </ul>
+  {{/if}}
+
+  {{#if isFinished}}
+    {{#if result}}
+    <p class="{{#if result.cancelled}}esb-cancelled{{/if}}">
+      {{#if result.cancelled}}{{localize "ESB.Indexing.Cancelled"}}{{else}}{{localize "ESB.Indexing.Done"}}{{/if}}
+    </p>
+    <table class="esb-plan">
+      <tbody>
+        <tr><td>{{localize "ESB.Indexing.Result.Ok"}}</td><td class="num">{{result.okCount}}</td></tr>
+        <tr><td>{{localize "ESB.Indexing.Scenes"}}</td><td class="num">{{result.scenes}}</td></tr>
+        <tr><td>{{localize "ESB.Indexing.Result.Failed"}}</td><td class="num">{{result.failed}}</td></tr>
+        <tr><td>{{localize "ESB.Indexing.Result.Warnings"}}</td><td class="num">{{result.warnings}}</td></tr>
+      </tbody>
+    </table>
+    {{#if result.failures.length}}
+    <ul class="esb-results">
+      {{#each result.failures}}
+      <li class="error"><i class="fa-solid fa-triangle-exclamation" inert></i> {{packageTitle}} › {{label}} — {{error}}</li>
+      {{/each}}
+    </ul>
+    {{/if}}
+    {{#if result.staleFiles}}
+    <p class="hint">{{localize "ESB.Indexing.StaleFiles" count=result.staleFiles dir=result.packsDir}}</p>
+    {{/if}}
+    {{/if}}
+  {{/if}}
+
+  <footer class="form-footer">
+    {{#if isReady}}
+    <button type="button" data-action="start" {{#if summary.nothingToDo}}disabled{{/if}}>
+      <i class="fa-solid fa-play" inert></i> {{localize "ESB.Indexing.Start"}}
+    </button>
+    {{/if}}
+    {{#if isRunning}}
+    <button type="button" data-action="cancel"><i class="fa-solid fa-stop" inert></i> {{localize "ESB.Indexing.Cancel"}}</button>
+    {{/if}}
+    {{#unless isRunning}}
+    <button type="button" data-action="close"><i class="fa-solid fa-xmark" inert></i> {{localize "ESB.Indexing.Close"}}</button>
+    {{/unless}}
+  </footer>
+</section>

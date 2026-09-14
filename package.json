@@ -1,0 +1,6 @@
+{
+  "name": "elfrey-scene-browser",
+  "private": true,
+  "type": "module",
+  "description": "Marks the scripts as ES modules for Node-based developer checks (dev/). Foundry ignores this file."
+}

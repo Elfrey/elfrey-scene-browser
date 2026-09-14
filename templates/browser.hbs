@@ -1,0 +1,78 @@
+<section class="esb-root">
+  <header class="esb-toolbar">
+    <div class="esb-search">
+      <i class="fa-solid fa-magnifying-glass" inert></i>
+      <input type="search" name="search" autocomplete="off" placeholder="{{localize "ESB.SearchPlaceholder"}}">
+    </div>
+    <div class="esb-pinned" hidden></div>
+    <span class="esb-shown-count"></span>
+  </header>
+
+  <div class="esb-filters">
+    <select name="status" data-filter="status">
+      <option value="">{{localize "ESB.Filter.Status.All"}}</option>
+      <option value="world">{{localize "ESB.Tree.World"}}</option>
+      <option value="active">{{localize "ESB.Filter.Status.Active"}}</option>
+      <option value="inactive">{{localize "ESB.Filter.Status.Inactive"}}</option>
+    </select>
+    <select name="grid" data-filter="grid">
+      <option value="">{{localize "ESB.Filter.Grid.All"}}</option>
+      <option value="square">{{localize "ESB.Filter.Grid.Square"}}</option>
+      <option value="hex">{{localize "ESB.Filter.Grid.Hex"}}</option>
+      <option value="gridless">{{localize "ESB.Filter.Grid.Gridless"}}</option>
+    </select>
+    <select name="size" data-filter="size">
+      <option value="">{{localize "ESB.Filter.Size.All"}}</option>
+      <option value="s">{{localize "ESB.Filter.Size.S"}}</option>
+      <option value="m">{{localize "ESB.Filter.Size.M"}}</option>
+      <option value="l">{{localize "ESB.Filter.Size.L"}}</option>
+      <option value="xl">{{localize "ESB.Filter.Size.XL"}}</option>
+    </select>
+    <select name="content" data-filter="content">
+      <option value="">{{localize "ESB.Filter.Content.All"}}</option>
+      <option value="walls">{{localize "ESB.Counts.walls"}}</option>
+      <option value="tokens">{{localize "ESB.Counts.tokens"}}</option>
+      <option value="lights">{{localize "ESB.Counts.lights"}}</option>
+      <option value="notes">{{localize "ESB.Counts.notes"}}</option>
+    </select>
+    <select name="system" data-filter="system"><option value="">{{localize "ESB.Filter.System.All"}}</option></select>
+    <span class="esb-flex"></span>
+    <label class="esb-sort">{{localize "ESB.Sort.Label"}}
+      <select name="sort">
+        <option value="name">{{localize "ESB.Sort.Name"}}</option>
+        <option value="package">{{localize "ESB.Sort.Package"}}</option>
+        <option value="size">{{localize "ESB.Sort.Size"}}</option>
+        <option value="modified">{{localize "ESB.Sort.Modified"}}</option>
+        <option value="walls">{{localize "ESB.Sort.Walls"}}</option>
+      </select>
+    </label>
+  </div>
+
+  {{#unless canRead}}<p class="notification warning esb-banner">{{localize "ESB.Notices.NoFileAccess"}}</p>{{/unless}}
+  {{#if cache.staleFiles}}<p class="notification info esb-banner">{{localize "ESB.Indexing.StaleFiles" count=cache.staleFiles dir=cache.dir}}</p>{{/if}}
+  {{#if cache.empty}}<p class="notification info esb-banner">{{localize "ESB.Notices.CacheEmpty"}}</p>{{/if}}
+
+  <div class="esb-body">
+    <nav class="esb-tree-pane"><div class="esb-tree"></div></nav>
+    <div class="esb-grid-pane">
+      <div class="esb-grid"></div>
+      <div class="esb-sentinel"></div>
+    </div>
+    <aside class="esb-details-pane"><div class="esb-details empty">{{localize "ESB.Details.None"}}</div></aside>
+  </div>
+
+  <footer class="esb-footer">
+    <span class="esb-cache-line">
+      {{#if cache.generatedAt}}
+        <i class="fa-solid fa-database" inert></i> {{cache.scenes}} · {{cache.generatedAt}}{{#if cache.errors}} · <span class="esb-err">{{localize "ESB.Cache.Errors"}} {{cache.errors}}</span>{{/if}}
+      {{else}}
+        <i class="fa-solid fa-database" inert></i> {{localize "ESB.Cache.Empty"}}
+      {{/if}}
+      {{#if inactiveModules}} · {{inactiveModules}} {{localize "ESB.InactiveShort"}}{{/if}}
+    </span>
+    <div class="esb-toolbar-actions">
+      <button type="button" data-action="refresh" data-tooltip="{{localize "ESB.Actions.Refresh"}}"><i class="fa-solid fa-rotate" inert></i></button>
+      <button type="button" data-action="index"><i class="fa-solid fa-magnifying-glass-chart" inert></i> {{localize "ESB.Actions.Index"}}</button>
+    </div>
+  </footer>
+</section>

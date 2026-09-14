@@ -42,6 +42,9 @@ async function readDormantScene(rec) {
   const prebuilt = await fetchPrebuiltScene(rec);
   if ( prebuilt ) return prebuilt;
 
+  // On Foundry v14 the server blocks pack files, so without a prebuilt document there is nothing to read.
+  if ( Number(game.version?.split(".")[0]) >= 14 ) throw new Error(game.i18n.localize("ESB.Errors.NeedFullScenes"));
+
   // Fallback (Foundry v13): read the pack files directly over HTTP.
   const worker = new PackWorker();
   try {
@@ -114,7 +117,8 @@ export async function importScene(rec, { activate = false, folderPath = null } =
     }
   } catch ( err ) {
     console.error(`${MODULE_ID} |`, err);
-    notify.error("ESB.Errors.ImportFailed", { error: err.message });
+    if ( err?.message === game.i18n.localize("ESB.Errors.NeedFullScenes") ) notify.warn("ESB.Errors.NeedFullScenes");
+    else notify.error("ESB.Errors.ImportFailed", { error: err.message });
     return null;
   }
   if ( !created ) return null;

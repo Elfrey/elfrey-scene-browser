@@ -4,7 +4,7 @@
 import { MODULE_ID, registerSettings, log } from "./settings.js";
 import { SceneBrowserApp } from "./app/browser.js";
 import { listScenePackSources, summarizeSources } from "./sources.js";
-import { SceneCache } from "./cache.js";
+import { SceneCache, filePicker } from "./cache.js";
 
 Hooks.once("init", () => {
   registerSettings();
@@ -56,14 +56,24 @@ async function warnIfCacheStale() {
     if ( !entry ) missing.push(src);
     else if ( entry.package?.version !== src.packageVersion ) stale.push(src);
   }
-  if ( !missing.length && !stale.length ) return;
+  // Are full scene documents present? Without them, importing scenes from disabled modules is impossible on v14.
+  let hasFullScenes = false;
+  try {
+    const result = await filePicker().browse("data", `${SceneCache.configuredDir}/scenes`);
+    hasFullScenes = ((result?.dirs?.length ?? 0) + (result?.files?.length ?? 0)) > 0;
+  } catch ( err ) {
+    hasFullScenes = false;
+  }
 
   const packages = new Set([...missing, ...stale].map(s => s.packageId));
-  log(`cache needs rebuilding: ${missing.length} pack(s) not cached, ${stale.length} outdated; packages: ${[...packages].join(", ")}`);
-  ui.notifications.warn(
-    game.i18n.format("ESB.CacheWarning.Message", { count: packages.size }),
-    { permanent: true }
-  );
+  if ( packages.size ) {
+    log(`cache incomplete: ${missing.length} pack(s) not cached, ${stale.length} outdated; packages: ${[...packages].join(", ")}`);
+    ui.notifications.warn(game.i18n.format("ESB.CacheWarning.Message", { count: packages.size }), { permanent: true });
+  }
+  if ( !hasFullScenes ) {
+    log("cache has no full scene documents — import from disabled modules is unavailable on v14 until built with --full-scenes");
+    ui.notifications.warn(game.i18n.localize("ESB.CacheWarning.NoFullScenes"), { permanent: true });
+  }
 }
 
 /**

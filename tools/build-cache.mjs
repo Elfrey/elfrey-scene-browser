@@ -64,15 +64,27 @@ function readJson(file) {
   try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch { return null; }
 }
 
-/** Foundry version of the install sitting next to the data dir, or null. */
+/** Best guess of the Foundry version for a data dir: the newest coreVersion among its worlds. Informational. */
 function detectCoreVersion(dataDir) {
-  const parent = path.dirname(path.resolve(dataDir));
-  for ( const name of (fs.existsSync(parent) ? fs.readdirSync(parent) : []) ) {
-    if ( !/^fvtt/.test(name) ) continue;
-    const pkg = readJson(path.join(parent, name, "package.json"));
-    if ( pkg?.version ) return pkg.version;
+  const worldsDir = path.join(dataDir, "Data", "worlds");
+  let best = null;
+  if ( fs.existsSync(worldsDir) ) {
+    for ( const id of fs.readdirSync(worldsDir) ) {
+      const w = readJson(path.join(worldsDir, id, "world.json"));
+      const v = w?.coreVersion;
+      if ( v && (!best || compareVersions(v, best) > 0) ) best = v;
+    }
   }
-  return null;
+  return best;
+}
+
+function compareVersions(a, b) {
+  const pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
+  for ( let i = 0; i < Math.max(pa.length, pb.length); i++ ) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if ( d ) return d;
+  }
+  return 0;
 }
 
 function packFullPath(packageType, pkgId, pack) {

@@ -71,7 +71,8 @@
       "ImportFailed": "Import failed: {error}",
       "SceneNotFound": "Scene not found in the pack.",
       "PackNotConnected": "That compendium is not connected (module disabled).",
-      "NoImage": "This scene has no image."
+      "NoImage": "This scene has no image.",
+      "NeedFullScenes": "Cannot import: this scene's module is disabled and Foundry v14 does not serve its pack files. Rebuild the cache with tools/build-cache.mjs --full-scenes, then try again."
     },
     "Indexing": {
       "Title": "Indexing scenes",
@@ -196,7 +197,8 @@
     "Selected": "Selected",
     "SelectedClear": "Clear selection",
     "CacheWarning": {
-      "Message": "Elfrey Scene Browser: {count} module(s) with scenes are missing from the cache or changed version. On Foundry v14, scenes of disabled modules come only from a cache built outside Foundry — run tools/build-cache.mjs (add --full-scenes to allow importing), then press Refresh in the Scene Browser."
+      "Message": "Elfrey Scene Browser: {count} module(s) with scenes are missing from the cache or changed version. On Foundry v14, scenes of disabled modules come only from a cache built outside Foundry — run tools/build-cache.mjs (add --full-scenes to allow importing), then press Refresh in the Scene Browser.",
+      "NoFullScenes": "Elfrey Scene Browser: the cache has no full scene documents, so scenes from disabled modules cannot be imported on Foundry v14. Rebuild the cache with the --full-scenes flag: node tools/build-cache.mjs --data <your-data-dir> --full-scenes, then press Refresh."
     }
   }
 }

@@ -12,7 +12,8 @@ export const SETTINGS = Object.freeze({
   cardSize: "cardSize",
   rememberState: "rememberState",
   showInactive: "showInactive",
-  uiState: "uiState"
+  uiState: "uiState",
+  hideCacheWarning: "hideCacheWarning"
 });
 
 export const log = (...args) => console.log(`${MODULE_ID} |`, ...args);
@@ -76,6 +77,14 @@ export function registerSettings() {
     config: false,
     type: Object,
     default: {}
+  });
+  game.settings.register(MODULE_ID, SETTINGS.hideCacheWarning, {
+    name: "ESB.Settings.HideCacheWarning.Name",
+    hint: "ESB.Settings.HideCacheWarning.Hint",
+    scope: "client",
+    config: true,
+    type: Boolean,
+    default: false
   });
 }
 

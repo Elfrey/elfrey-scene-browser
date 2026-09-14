@@ -61,6 +61,10 @@
       "CacheDir": {
         "Name": "Cache folder",
         "Hint": "Folder inside Data where the scene index is stored (one file per pack, versioned). Default: elfrey-scene-browser"
+      },
+      "HideCacheWarning": {
+        "Name": "Don't warn about the cache on load",
+        "Hint": "Suppress the load-time dialog about (re)building the scene cache on Foundry v14. The banner inside the Scene Browser window is still shown."
       }
     },
     "Cache": {
@@ -199,7 +203,10 @@
     "SelectedClear": "Clear selection",
     "CacheWarning": {
       "Message": "Elfrey Scene Browser: {count} module(s) with scenes are missing from the cache or changed version. On Foundry v14, scenes of disabled modules come only from a cache built outside Foundry — run tools/build-cache.mjs (add --full-scenes to allow importing), then press Refresh in the Scene Browser.",
-      "NoFullScenes": "Elfrey Scene Browser: the cache has no full scene documents, so scenes from disabled modules cannot be imported on Foundry v14. Rebuild the cache with the --full-scenes flag: node tools/build-cache.mjs --data <your-data-dir> --full-scenes, then press Refresh."
+      "NoFullScenes": "Elfrey Scene Browser: the cache has no full scene documents, so scenes from disabled modules cannot be imported on Foundry v14. Rebuild the cache with the --full-scenes flag: node tools/build-cache.mjs --data <your-data-dir> --full-scenes, then press Refresh.",
+      "Title": "Scene Browser — cache",
+      "DontShowAgain": "Don't show this again",
+      "Ok": "Got it"
     }
   }
 }

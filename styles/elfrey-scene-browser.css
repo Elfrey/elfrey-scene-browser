@@ -119,3 +119,6 @@
 .elfrey-scene-browser .esb-pin-clear { width: auto; height: 1.6rem; padding: 0 0.5rem; background: none; border: 1px solid var(--color-border-light-tertiary, rgba(128,128,128,0.4)); border-radius: 11px; color: var(--color-text-secondary, #999); cursor: pointer; font-size: var(--font-size-12, 12px); white-space: nowrap; }
 .elfrey-scene-browser .esb-node-row.flash { animation: esb-flash 0.8s ease-out; }
 @keyframes esb-flash { from { background: var(--color-warm-1, #ff6400); } to { background: transparent; } }
+
+/* Cache dialog checkbox */
+.esb-dialog-check { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; }

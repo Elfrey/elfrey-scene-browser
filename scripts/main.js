@@ -1,7 +1,7 @@
 /**
  * Elfrey Scene Browser — hooks entry point.
  */
-import { MODULE_ID, registerSettings, log } from "./settings.js";
+import { MODULE_ID, SETTINGS, registerSettings, getSetting, setSetting, log } from "./settings.js";
 import { SceneBrowserApp } from "./app/browser.js";
 import { listScenePackSources, summarizeSources } from "./sources.js";
 import { SceneCache, filePicker } from "./cache.js";
@@ -66,14 +66,34 @@ async function warnIfCacheStale() {
   }
 
   const packages = new Set([...missing, ...stale].map(s => s.packageId));
-  if ( packages.size ) {
-    log(`cache incomplete: ${missing.length} pack(s) not cached, ${stale.length} outdated; packages: ${[...packages].join(", ")}`);
-    ui.notifications.warn(game.i18n.format("ESB.CacheWarning.Message", { count: packages.size }), { permanent: true });
+  const showCache = packages.size > 0;
+  const showFull = !hasFullScenes;
+  if ( !showCache && !showFull ) return;
+  if ( getSetting(SETTINGS.hideCacheWarning) ) return;   // GM chose "don't show again"
+
+  if ( showCache ) log(`cache incomplete: ${missing.length} pack(s) not cached, ${stale.length} outdated; packages: ${[...packages].join(", ")}`);
+  if ( showFull ) log("cache has no full scene documents — import from disabled modules is unavailable on v14 until built with --full-scenes");
+
+  const parts = [];
+  if ( showFull ) parts.push(`<p>${game.i18n.localize("ESB.CacheWarning.NoFullScenes")}</p>`);
+  if ( showCache ) parts.push(`<p>${game.i18n.format("ESB.CacheWarning.Message", { count: packages.size })}</p>`);
+  parts.push(`<label class="esb-dialog-check"><input type="checkbox" name="hide"> ${game.i18n.localize("ESB.CacheWarning.DontShowAgain")}</label>`);
+
+  let dontShow = false;
+  try {
+    dontShow = await foundry.applications.api.DialogV2.prompt({
+      window: { title: game.i18n.localize("ESB.CacheWarning.Title"), icon: "fa-solid fa-database" },
+      position: { width: 480 },
+      content: parts.join(""),
+      ok: {
+        label: game.i18n.localize("ESB.CacheWarning.Ok"),
+        callback: (event, button) => button.form?.elements?.hide?.checked ?? false
+      }
+    });
+  } catch ( err ) {
+    return;   // dialog dismissed
   }
-  if ( !hasFullScenes ) {
-    log("cache has no full scene documents — import from disabled modules is unavailable on v14 until built with --full-scenes");
-    ui.notifications.warn(game.i18n.localize("ESB.CacheWarning.NoFullScenes"), { permanent: true });
-  }
+  if ( dontShow ) await setSetting(SETTINGS.hideCacheWarning, true);
 }
 
 /**

@@ -4,6 +4,7 @@
 import { MODULE_ID, registerSettings, log } from "./settings.js";
 import { SceneBrowserApp } from "./app/browser.js";
 import { listScenePackSources, summarizeSources } from "./sources.js";
+import { SceneCache } from "./cache.js";
 
 Hooks.once("init", () => {
   registerSettings();
@@ -30,8 +31,40 @@ Hooks.once("ready", () => {
   if ( game.user.isGM ) {
     const s = summarizeSources();
     log(`ready — ${s.packs} scene packs (${s.livePacks} live, ${s.dormantPacks} dormant), ${s.modules.length} modules with scenes`);
+    warnIfCacheStale();
   }
 });
+
+/**
+ * On Foundry v14 the browser cannot read pack files, so scenes of disabled modules come only from a cache
+ * built outside Foundry (tools/build-cache.mjs). Warn the GM at load when that cache is missing entries or
+ * is out of date — i.e. a module with scenes was added, or a cached module changed version.
+ */
+async function warnIfCacheStale() {
+  if ( Number(game.version?.split(".")[0]) < 14 ) return;   // v13 can index from the UI; no external cache needed
+  let cache;
+  try {
+    cache = await SceneCache.load();
+  } catch ( err ) {
+    return;
+  }
+  const dormant = listScenePackSources().filter(src => !src.live);   // inactive packs need the external cache
+  const missing = [];
+  const stale = [];
+  for ( const src of dormant ) {
+    const entry = cache.get(src.collection);
+    if ( !entry ) missing.push(src);
+    else if ( entry.package?.version !== src.packageVersion ) stale.push(src);
+  }
+  if ( !missing.length && !stale.length ) return;
+
+  const packages = new Set([...missing, ...stale].map(s => s.packageId));
+  log(`cache needs rebuilding: ${missing.length} pack(s) not cached, ${stale.length} outdated; packages: ${[...packages].join(", ")}`);
+  ui.notifications.warn(
+    game.i18n.format("ESB.CacheWarning.Message", { count: packages.size }),
+    { permanent: true }
+  );
+}
 
 /**
  * Add the "Scene Browser" button to a sidebar directory header (Scenes and Compendium tabs).

@@ -47,10 +47,10 @@ const decoder = new TextDecoder();
  * @param {string} key   e.g. "!scenes.regions.behaviors!abc.def.ghi"
  * @returns {{collection: string, sceneId: string, ids: string[]}|null}
  */
-export function parseEmbeddedKey(key) {
+export function parseEmbeddedKey(key, prefix = EMBEDDED_PREFIX) {
   const bang = key.indexOf("!", 1);
   if ( bang === -1 ) return null;
-  const collection = key.slice(EMBEDDED_PREFIX.length, bang);
+  const collection = key.slice(prefix.length, bang);
   const ids = key.slice(bang + 1).split(".");
   return { collection, sceneId: ids[0], ids: ids.slice(1) };
 }
@@ -267,4 +267,96 @@ export async function readScenePack(source, { verify = true, embed = false, incl
   }
 
   return { manifest: current, files, lastSequence: manifest.lastSequence, scenes, folders, counts, warnings, actors: [...actorsById.values()] };
+}
+
+/**
+ * Read Actor documents from an Actor-type compendium pack. Only actors whose id is in `wantedIds` are kept
+ * (bounds memory for large bestiaries). Reuses the same LevelDB parsing as readScenePack but tracks only
+ * the "!actors!" key space.
+ * @param {PackSource} source
+ * @param {Set<string>} wantedIds
+ * @param {object} [options]
+ * @param {boolean} [options.verify=false]
+ * @param {(message: string) => void} [options.onWarning]
+ * @returns {Promise<object[]>}  Raw actor documents
+ */
+export async function readActorDocs(source, wantedIds, { verify = false, onWarning } = {}) {
+  const ACTOR_PREFIX = "!actors!";
+  if ( !wantedIds || !wantedIds.size ) return [];
+
+  const current = decoder.decode(await source.read("CURRENT")).trim();
+  if ( !/^MANIFEST-\d{6}$/.test(current) ) return [];
+  const manifest = parseManifest(await source.read(current), { verify, onWarning });
+  const listing = source.list ? await source.list() : null;
+  const tables = [...manifest.files.values()].sort((a, b) => a.number - b.number);
+  const minLog = manifest.prevLogNumber || manifest.logNumber;
+  const logs = listing
+    ? listing.filter(n => /^\d{6}\.log$/.test(n) && (parseInt(n, 10) >= minLog)).sort()
+    : [...new Set([manifest.prevLogNumber, manifest.logNumber].filter(Boolean).map(n => fileName(n, "log")))];
+
+  const ACTOR_EMBED_PREFIX = "!actors.";
+  const seqById = new Map();
+  const valueById = new Map();
+  const embSeq = new Map();       // embedded key → seq (>0 put, <0 delete)
+  const embValue = new Map();     // embedded key → JSON bytes (only for wanted actors)
+  const put = (keyBytes, valueBytes, type, seq) => {
+    const key = decoder.decode(keyBytes);
+    const deleted = type === OP_DELETE;
+    if ( key.startsWith(ACTOR_EMBED_PREFIX) ) {
+      // Embedded documents of an actor (items, effects, items.effects, …), keyed like "!actors.items!<aid>.<iid>".
+      const aid = key.slice(key.indexOf("!", 1) + 1).split(".")[0];
+      if ( !wantedIds.has(aid) ) return;
+      const prev = embSeq.get(key);
+      if ( prev !== undefined && Math.abs(prev) >= seq ) return;
+      embSeq.set(key, deleted ? -seq : seq);
+      if ( deleted ) embValue.delete(key); else embValue.set(key, valueBytes.slice());
+      return;
+    }
+    if ( !key.startsWith(ACTOR_PREFIX) ) return;
+    const id = key.slice(ACTOR_PREFIX.length);
+    if ( !wantedIds.has(id) ) return;
+    const prev = seqById.get(id);
+    if ( prev !== undefined && Math.abs(prev) >= seq ) return;
+    seqById.set(id, deleted ? -seq : seq);
+    if ( deleted ) valueById.delete(id);
+    else valueById.set(id, valueBytes.slice());
+  };
+
+  for ( const table of tables ) {
+    let name = fileName(table.number, "ldb");
+    if ( listing && !listing.includes(name) && listing.includes(fileName(table.number, "sst")) ) name = fileName(table.number, "sst");
+    let bytes;
+    try { bytes = await source.read(name); } catch { continue; }
+    try { for ( const e of readTableEntries(bytes, { verify, onWarning }) ) put(e.key, e.value, e.type, e.seq); }
+    catch ( err ) { onWarning?.(`actor table ${name}: ${err.message}`); }
+  }
+  for ( const name of logs ) {
+    let bytes;
+    try { bytes = await source.read(name); } catch { continue; }
+    if ( !bytes.length ) continue;
+    try { for ( const rec of readLogRecords(bytes, { verify, onWarning }) ) for ( const e of parseWriteBatch(rec) ) put(e.key, e.value, e.type, e.seq); }
+    catch ( err ) { onWarning?.(`actor log ${name}: ${err.message}`); }
+  }
+
+  // Parse actors, then attach their embedded documents (items/effects), keyed under "!actors.<coll>!<aid>.<…>".
+  const actors = new Map();
+  for ( const [id, v] of valueById ) {
+    try { const doc = JSON.parse(decoder.decode(v)); if ( !doc._id ) doc._id = id; actors.set(id, doc); }
+    catch ( err ) { onWarning?.(`actor ${id}: invalid JSON`); }
+  }
+  const embByActor = new Map();
+  for ( const [key, seq] of embSeq ) {
+    if ( seq < 0 || !embValue.has(key) ) continue;
+    const parsed = parseEmbeddedKey(key, ACTOR_EMBED_PREFIX);
+    if ( !parsed || !actors.has(parsed.sceneId) ) continue;
+    let list = embByActor.get(parsed.sceneId);
+    if ( !list ) embByActor.set(parsed.sceneId, list = []);
+    try { list.push({ collection: parsed.collection, ids: parsed.ids, doc: JSON.parse(decoder.decode(embValue.get(key))) }); }
+    catch ( err ) { onWarning?.(`${key}: invalid JSON`); }
+  }
+  for ( const [id, actor] of actors ) {
+    const list = embByActor.get(id);
+    if ( list ) attachEmbedded(actor, list);
+  }
+  return [...actors.values()];
 }

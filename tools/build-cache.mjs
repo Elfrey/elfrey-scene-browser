@@ -27,7 +27,7 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
-import { readScenePack } from "../scripts/leveldb/pack-reader.js";
+import { readScenePack, readActorDocs } from "../scripts/leveldb/pack-reader.js";
 import { summarizeScene, summarizeFolder, countsFor } from "../scripts/leveldb/summary.js";
 
 const CACHE_SCHEMA = 1;                                   // mirrors scripts/cache.js
@@ -122,6 +122,30 @@ function listPacks(dataDir) {
   return out;
 }
 
+/** Map packageId → [actor pack directories] for a data dir (for resolving token actors). */
+function listActorPacks(dataDir) {
+  const map = new Map();
+  const roots = [["modules", "module.json", "module"], ["systems", "system.json", "system"], ["worlds", "world.json", "world"]];
+  for ( const [dir, manifestName, packageType] of roots ) {
+    const base = path.join(dataDir, "Data", dir);
+    if ( !fs.existsSync(base) ) continue;
+    for ( const id of fs.readdirSync(base) ) {
+      const manifest = readJson(path.join(base, id, manifestName));
+      if ( !manifest ) continue;
+      const pkgId = manifest.id ?? id;
+      for ( const pack of manifest.packs ?? [] ) {
+        if ( (pack.type ?? pack.entity) !== "Actor" ) continue;
+        const full = packFullPath(packageType, pkgId, pack);
+        const dirOnDisk = path.join(dataDir, "Data", full);
+        if ( !fs.existsSync(dirOnDisk) ) continue;
+        if ( !map.has(pkgId) ) map.set(pkgId, []);
+        map.get(pkgId).push(dirOnDisk);
+      }
+    }
+  }
+  return map;
+}
+
 /* ------------------------------ signatures ------------------------------ */
 
 /** Cheap signature from disk: CURRENT contents + every file name→size. */
@@ -201,6 +225,7 @@ for ( const dataDir of dataDirs ) {
   const coreVersion = detectCoreVersion(resolved);
   const packsDir = path.join(resolved, "Data", outName, "packs");
   const scenesDir = path.join(resolved, "Data", outName, "scenes");
+  const actorPacksByPackage = fullScenes ? listActorPacks(resolved) : new Map();
   const { map: existing, stale } = await loadExisting(packsDir);
   const packs = listPacks(resolved);
   log(`\n== ${resolved}  (core ${coreVersion ?? "?"}) — ${packs.length} Scene/Adventure packs`);
@@ -235,7 +260,19 @@ for ( const dataDir of dataDirs ) {
       const result = await readScenePack(source, { verify: true, embed: fullScenes, includeActors: fullScenes });
       const scenes = result.scenes.map(s => summarizeScene(s, countsFor(result.counts, s._id)));
       if ( fullScenes ) {
-        const actorsById = new Map((result.actors ?? []).map(a => [a._id, a]));
+        const actorsById = new Map((result.actors ?? []).map(a => [a._id, a]));   // actors bundled in adventures
+        // Resolve any remaining token actors from the package's separate Actor compendium(s).
+        const needed = new Set();
+        for ( const sc of result.scenes ) for ( const tok of sc.tokens ?? [] ) if ( tok?.actorId && !actorsById.has(tok.actorId) ) needed.add(tok.actorId);
+        if ( needed.size ) {
+          for ( const actorDir of actorPacksByPackage.get(pack.packageId) ?? [] ) {
+            if ( !needed.size ) break;
+            const asrc = { list: async () => fsp.readdir(actorDir), read: async n => new Uint8Array(await fsp.readFile(path.join(actorDir, n))) };
+            let found = [];
+            try { found = await readActorDocs(asrc, needed, { verify: false }); } catch ( err ) { /* skip unreadable actor pack */ }
+            for ( const a of found ) { actorsById.set(a._id, a); needed.delete(a._id); }
+          }
+        }
         await writeFullScenes(scenesDir, pack.collection, result.scenes, actorsById);
       }
       entry = {

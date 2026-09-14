@@ -5,6 +5,7 @@
 import { MODULE_ID, SETTINGS, getSetting, warn } from "../settings.js";
 import { PackWorker } from "../indexer.js";
 import { assetUrl } from "../model.js";
+import { SceneCache, safeName, dataRoute } from "../cache.js";
 
 const notify = {
   info: (k, d) => ui.notifications.info(game.i18n.format(k, d ?? {})),
@@ -36,6 +37,12 @@ export function importRootName() {
 
 /** Full scene JSON for a dormant (uncached-source) scene by re-reading just its pack. */
 async function readDormantScene(rec) {
+  // Preferred source: a complete scene document pre-built by tools/build-cache.mjs --full-scenes.
+  // This is a plain JSON file, so it loads even on Foundry v14 where the server blocks pack database files.
+  const prebuilt = await fetchPrebuiltScene(rec);
+  if ( prebuilt ) return prebuilt;
+
+  // Fallback (Foundry v13): read the pack files directly over HTTP.
   const worker = new PackWorker();
   try {
     const result = await worker.read(
@@ -47,6 +54,20 @@ async function readDormantScene(rec) {
     return scene;
   } finally {
     worker.terminate();
+  }
+}
+
+/** Fetch a scene document pre-built into the cache folder, or null if it is not there. */
+async function fetchPrebuiltScene(rec) {
+  const dir = SceneCache.configuredDir;
+  const path = `${dir}/scenes/${safeName(rec.packCollection)}/${safeName(rec.sceneId)}.json`;
+  try {
+    const response = await fetch(dataRoute(path), { cache: "no-store", credentials: "same-origin" });
+    if ( !response.ok ) return null;
+    return await response.json();
+  } catch ( err ) {
+    warn(`prebuilt scene fetch failed for ${rec.packCollection}/${rec.sceneId}: ${err.message}`);
+    return null;
   }
 }
 

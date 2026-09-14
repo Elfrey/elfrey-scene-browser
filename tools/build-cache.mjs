@@ -17,6 +17,9 @@
  *   --out <name>   Cache folder name inside Data/ (default: elfrey-scene-browser). Match the module's
  *                  "Cache folder" setting if you changed it.
  *   --full         Re-read every pack, ignoring the "unchanged since last run" check.
+ *   --full-scenes  Also write the complete document of every scene to <out>/scenes/<pack>/<id>.json, so the
+ *                  browser can import scenes from disabled modules on Foundry v14 (where it cannot read pack
+ *                  files itself). Costs disk space (roughly the size of the packs) and more RAM while running.
  *   --quiet        Only print the final summary.
  *
  * After it finishes, open the Scene Browser and press "Refresh" (the round arrow) to reload the cache.
@@ -37,18 +40,19 @@ const decoder = new TextDecoder();
 const argv = process.argv.slice(2);
 const dataDirs = [];
 let outName = "elfrey-scene-browser";
-let full = false, quiet = false;
+let full = false, quiet = false, fullScenes = false;
 for ( let i = 0; i < argv.length; i++ ) {
   const a = argv[i];
   if ( a === "--data" ) dataDirs.push(argv[++i]);
   else if ( a === "--out" ) outName = argv[++i];
   else if ( a === "--full" ) full = true;
+  else if ( a === "--full-scenes" ) fullScenes = true;
   else if ( a === "--quiet" ) quiet = true;
   else if ( a === "-h" || a === "--help" ) { usage(); process.exit(0); }
   else { console.error(`Unknown argument: ${a}`); usage(); process.exit(2); }
 }
 function usage() {
-  console.log("Usage: node tools/build-cache.mjs --data /path/to/foundry-data [--out <cacheFolder>] [--full] [--quiet]");
+  console.log("Usage: node tools/build-cache.mjs --data /path/to/foundry-data [--out <cacheFolder>] [--full] [--full-scenes] [--quiet]");
 }
 if ( !dataDirs.length ) { usage(); process.exit(2); }
 
@@ -155,6 +159,19 @@ async function loadExisting(packsDir) {
 
 /* -------------------------------- main -------------------------------- */
 
+/** Write the complete document of each scene to scenes/<collection>/<sceneId>.json (for v14 import). */
+async function writeFullScenes(scenesDir, collection, rawScenes) {
+  const dir = path.join(scenesDir, safeName(collection));
+  await fsp.rm(dir, { recursive: true, force: true });   // rebuild fresh (scenes may have been removed)
+  await fsp.mkdir(dir, { recursive: true });
+  for ( const raw of rawScenes ) {
+    if ( !raw?._id ) continue;
+    const doc = { ...raw };
+    delete doc.__adv;   // internal tag added by the reader
+    await fsp.writeFile(path.join(dir, `${safeName(raw._id)}.json`), JSON.stringify(doc));
+  }
+}
+
 let grand = { packs: 0, read: 0, unchanged: 0, missing: 0, errors: 0, scenes: 0, removed: 0 };
 
 for ( const dataDir of dataDirs ) {
@@ -165,6 +182,7 @@ for ( const dataDir of dataDirs ) {
   }
   const coreVersion = detectCoreVersion(resolved);
   const packsDir = path.join(resolved, "Data", outName, "packs");
+  const scenesDir = path.join(resolved, "Data", outName, "scenes");
   const { map: existing, stale } = await loadExisting(packsDir);
   const packs = listPacks(resolved);
   log(`\n== ${resolved}  (core ${coreVersion ?? "?"}) — ${packs.length} Scene/Adventure packs`);
@@ -183,7 +201,8 @@ for ( const dataDir of dataDirs ) {
     let signature;
     try { signature = signatureOf(pack.dir); } catch ( err ) { signature = null; }
     const prev = existing.get(pack.collection);
-    if ( !full && prev && prev.status === "ok" && prev.packageVersion === pack.packageVersion && signaturesEqual(prev.signature, signature) ) {
+    const scenesOk = !fullScenes || fs.existsSync(path.join(scenesDir, safeName(pack.collection)));
+    if ( !full && prev && prev.status === "ok" && prev.packageVersion === pack.packageVersion && signaturesEqual(prev.signature, signature) && scenesOk ) {
       grand.unchanged++;
       log(`  ok      ${pack.collection}: unchanged`);
       continue;
@@ -195,8 +214,9 @@ for ( const dataDir of dataDirs ) {
     };
     let entry;
     try {
-      const result = await readScenePack(source, { verify: true });
+      const result = await readScenePack(source, { verify: true, embed: fullScenes });
       const scenes = result.scenes.map(s => summarizeScene(s, countsFor(result.counts, s._id)));
+      if ( fullScenes ) await writeFullScenes(scenesDir, pack.collection, result.scenes);
       entry = {
         schema: CACHE_SCHEMA,
         collection: pack.collection,

@@ -172,7 +172,7 @@ async function loadExisting(packsDir) {
 /* -------------------------------- main -------------------------------- */
 
 /** Write the complete document of each scene to scenes/<collection>/<sceneId>.json (for v14 import). */
-async function writeFullScenes(scenesDir, collection, rawScenes) {
+async function writeFullScenes(scenesDir, collection, rawScenes, actorsById) {
   const dir = path.join(scenesDir, safeName(collection));
   await fsp.rm(dir, { recursive: true, force: true });   // rebuild fresh (scenes may have been removed)
   await fsp.mkdir(dir, { recursive: true });
@@ -181,6 +181,12 @@ async function writeFullScenes(scenesDir, collection, rawScenes) {
     const doc = { ...raw };
     delete doc.__adv;   // internal tag added by the reader
     await fsp.writeFile(path.join(dir, `${safeName(raw._id)}.json`), JSON.stringify(doc));
+    // Actors this scene's tokens reference (bundled in the adventure) — written so import can pull them.
+    if ( actorsById?.size ) {
+      const ids = new Set((raw.tokens ?? []).map(t => t?.actorId).filter(Boolean));
+      const actors = [...ids].map(id => actorsById.get(id)).filter(Boolean);
+      if ( actors.length ) await fsp.writeFile(path.join(dir, `${safeName(raw._id)}.actors.json`), JSON.stringify(actors));
+    }
   }
 }
 
@@ -226,9 +232,12 @@ for ( const dataDir of dataDirs ) {
     };
     let entry;
     try {
-      const result = await readScenePack(source, { verify: true, embed: fullScenes });
+      const result = await readScenePack(source, { verify: true, embed: fullScenes, includeActors: fullScenes });
       const scenes = result.scenes.map(s => summarizeScene(s, countsFor(result.counts, s._id)));
-      if ( fullScenes ) await writeFullScenes(scenesDir, pack.collection, result.scenes);
+      if ( fullScenes ) {
+        const actorsById = new Map((result.actors ?? []).map(a => [a._id, a]));
+        await writeFullScenes(scenesDir, pack.collection, result.scenes, actorsById);
+      }
       entry = {
         schema: CACHE_SCHEMA,
         collection: pack.collection,

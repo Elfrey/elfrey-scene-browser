@@ -92,11 +92,12 @@ function attachEmbedded(scene, entries) {
  * @param {object} [options]
  * @param {boolean} [options.verify=true]              Verify checksums (mismatches are reported, not fatal)
  * @param {boolean|Set<string>} [options.embed=false]  Attach embedded documents to all scenes (true) or to these ids
+ * @param {boolean} [options.includeActors=false]      Also return the actor documents bundled in Adventure packs
  * @param {(progress: {file: string, bytes: number, loaded: number}) => void} [options.onProgress]
  * @param {(message: string) => void} [options.onWarning]
  * @returns {Promise<PackReadResult>}
  */
-export async function readScenePack(source, { verify = true, embed = false, onProgress, onWarning } = {}) {
+export async function readScenePack(source, { verify = true, embed = false, includeActors = false, onProgress, onWarning } = {}) {
   const warnings = [];
   const warn = message => {
     warnings.push(message);
@@ -197,6 +198,7 @@ export async function readScenePack(source, { verify = true, embed = false, onPr
   // 4. Extract documents
   const scenes = [];
   const folders = [];
+  const actorsById = new Map();   // adventure actors (only when includeActors)
   const sceneIds = new Set();
   for ( const [key, entry] of documents ) {
     if ( entry.deleted ) continue;
@@ -214,9 +216,10 @@ export async function readScenePack(source, { verify = true, embed = false, onPr
       sceneIds.add(doc._id);
     }
     else if ( key.startsWith(ADVENTURE_PREFIX) ) {
-      // An Adventure document bundles full scenes (with inline embedded arrays) and mixed-type folders.
+      // An Adventure document bundles full scenes (with inline embedded arrays), mixed-type folders and actors.
       if ( !doc._id ) doc._id = key.slice(ADVENTURE_PREFIX.length);
       const tag = { id: doc._id, name: doc.name ?? "" };
+      if ( includeActors ) for ( const a of doc.actors ?? [] ) { if ( a?._id ) actorsById.set(a._id, a); }
       for ( const sc of doc.scenes ?? [] ) {
         if ( !sc || typeof sc !== "object" ) continue;
         if ( sc.name === CF_TEMP_NAME ) continue;
@@ -263,5 +266,5 @@ export async function readScenePack(source, { verify = true, embed = false, onPr
     }
   }
 
-  return { manifest: current, files, lastSequence: manifest.lastSequence, scenes, folders, counts, warnings };
+  return { manifest: current, files, lastSequence: manifest.lastSequence, scenes, folders, counts, warnings, actors: [...actorsById.values()] };
 }

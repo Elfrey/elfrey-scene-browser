@@ -32,7 +32,8 @@
       "CacheEmpty": "The cache is empty. Click Index to read compendium files of inactive modules; active packs, the system and the world are shown live.",
       "ReadingPack": "Reading pack {label}…",
       "Imported": "Imported scene “{name}”.",
-      "Copied": "Copied to clipboard."
+      "Copied": "Copied to clipboard.",
+      "ImportedActors": "Imported {count} linked actor(s)."
     },
     "Settings": {
       "ImportFolder": {

@@ -7,6 +7,7 @@
  *   files    optional directory listing (names) obtained on the main thread
  *   bust     query-string value appended to every request (also what lets v13 serve the files)
  *   embed    false | true | string[] (scene ids) — attach embedded documents to scenes (for import)
+ *   includeActors  when true, also return the adventure actors referenced by the embedded scenes' tokens
  * Messages: { id, type: "progress", file, bytes, loaded } · { id, type: "warning", message }
  *           { id, type: "done", result } · { id, type: "error", message }
  */
@@ -15,7 +16,7 @@ import { summarizeScene, summarizeFolder, countsFor } from "./summary.js";
 
 self.addEventListener("message", async ({ data }) => {
   if ( data?.type !== "readPack" ) return;
-  const { id, baseUrl, path, files, bust, verify = true, embed = false } = data;
+  const { id, baseUrl, path, files, bust, verify = true, embed = false, includeActors = false } = data;
   const source = {
     list: files ? async () => files : undefined,
     read: async name => {
@@ -30,9 +31,21 @@ self.addEventListener("message", async ({ data }) => {
     const result = await readScenePack(source, {
       verify,
       embed: embedOption,
+      includeActors,
       onProgress: p => self.postMessage({ id, type: "progress", ...p }),
       onWarning: message => self.postMessage({ id, type: "warning", message })
     });
+    // Actors referenced by the embedded scenes' tokens (for importing linked/unlinked tokens).
+    let actors;
+    if ( includeActors && embedOption ) {
+      const wanted = new Set();
+      for ( const sc of result.scenes ) {
+        const target = (embedOption === true) || (embedOption instanceof Set && embedOption.has(sc._id));
+        if ( !target ) continue;
+        for ( const tok of sc.tokens ?? [] ) if ( tok?.actorId ) wanted.add(tok.actorId);
+      }
+      actors = result.actors.filter(a => wanted.has(a._id));
+    }
     self.postMessage({
       id,
       type: "done",
@@ -43,6 +56,7 @@ self.addEventListener("message", async ({ data }) => {
         folders: result.folders.map(summarizeFolder),
         scenes: result.scenes.map(s => summarizeScene(s, countsFor(result.counts, s._id))),
         fullScenes: embedOption ? result.scenes : undefined,
+        actors,
         warnings: result.warnings
       }
     });

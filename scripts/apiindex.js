@@ -29,7 +29,10 @@ function packageInfo(pack) {
 /** Distinct non-null token actorIds referenced by a scene document. */
 function tokenActorIds(scene) {
   const ids = new Set();
-  for ( const tok of scene.tokens ?? [] ) if ( tok?.actorId ) ids.add(tok.actorId);
+  for ( const tok of scene.tokens ?? [] ) {
+    const id = tok?.actorId ?? tok?.delta?._id;
+    if ( id ) ids.add(id);
+  }
   return ids;
 }
 
@@ -93,12 +96,12 @@ async function indexOnePack(pack, cache, actorPackCache) {
     for ( const folder of pack.folders ?? [] ) folders.push(folder.toObject());
   }
 
-  // Resolve token actors not bundled in an adventure from the package's Actor compendium(s).
+  // Resolve token actors not bundled in an adventure from Actor compendium(s): the package's own first,
+  // then any other enabled Actor pack (for adventures that reference a companion bestiary).
   const needed = new Set();
   for ( const sc of rawScenes ) for ( const id of tokenActorIds(sc) ) if ( !actorsById.has(id) ) needed.add(id);
   if ( needed.size ) {
-    const resolver = await packageActorIndex(pkg.id, actorPackCache);
-    for ( const id of needed ) { const a = resolver.get(id); if ( a ) actorsById.set(id, a); }
+    await resolveActors(needed, actorsById, pkg.id, actorPackCache);
   }
 
   // Write full-scene documents (and their actors) into a per-run versioned folder.
@@ -135,17 +138,18 @@ async function indexOnePack(pack, cache, actorPackCache) {
   return entry;
 }
 
-/** Build/reuse an actorId → raw-actor map for a package's Actor compendium packs. */
-async function packageActorIndex(packageId, actorPackCache) {
-  if ( actorPackCache.has(packageId) ) return actorPackCache.get(packageId);
-  const map = new Map();
+/** Fill `actorsById` for the needed ids from the package's own Actor compendium packs. */
+async function resolveActors(needed, actorsById, packageId, actorPackCache) {
   for ( const pack of game.packs ) {
     if ( pack.metadata.type !== "Actor" || pack.metadata.packageName !== packageId ) continue;
-    try {
-      const docs = await pack.getDocuments();
-      for ( const doc of docs ) map.set(doc.id, doc.toObject());
-    } catch ( err ) { console.warn("elfrey-scene-browser | actor pack read failed:", pack.collection, err); }
+    if ( ![...needed].some(id => !actorsById.has(id)) ) break;
+    let map = actorPackCache.get(pack.collection);
+    if ( !map ) {
+      map = new Map();
+      try { for ( const doc of await pack.getDocuments() ) map.set(doc.id, doc.toObject()); }
+      catch ( err ) { console.warn("elfrey-scene-browser | actor pack read failed:", pack.collection, err); }
+      actorPackCache.set(pack.collection, map);
+    }
+    for ( const id of needed ) { const a = map.get(id); if ( a ) actorsById.set(id, a); }
   }
-  actorPackCache.set(packageId, map);
-  return map;
 }

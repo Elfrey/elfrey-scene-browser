@@ -132,6 +132,9 @@ function prepareImportData(raw, rec) {
   delete data._id;
   delete data.sort;
   delete data.active;
+  // Some packs leave a token's actorId null while its ActorDelta carries the base actor's id; use it so the
+  // token links to the actor (which we import from the same reference).
+  for ( const tok of data.tokens ?? [] ) if ( !tok.actorId && tok.delta?._id ) tok.actorId = tok.delta._id;
   delete data.__adv;   // internal tag added by the pack reader for adventure scenes
   if ( "ownership" in data ) data.ownership = { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE, [game.user.id]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER };
   if ( rec.uuid ) foundry.utils.setProperty(data, "_stats.compendiumSource", rec.uuid);

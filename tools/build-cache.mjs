@@ -207,7 +207,7 @@ async function writeFullScenes(scenesDir, collection, rawScenes, actorsById) {
     await fsp.writeFile(path.join(dir, `${safeName(raw._id)}.json`), JSON.stringify(doc));
     // Actors this scene's tokens reference (bundled in the adventure) — written so import can pull them.
     if ( actorsById?.size ) {
-      const ids = new Set((raw.tokens ?? []).map(t => t?.actorId).filter(Boolean));
+      const ids = new Set((raw.tokens ?? []).map(t => t?.actorId ?? t?.delta?._id).filter(Boolean));
       const actors = [...ids].map(id => actorsById.get(id)).filter(Boolean);
       if ( actors.length ) await fsp.writeFile(path.join(dir, `${safeName(raw._id)}.actors.json`), JSON.stringify(actors));
     }
@@ -263,7 +263,7 @@ for ( const dataDir of dataDirs ) {
         const actorsById = new Map((result.actors ?? []).map(a => [a._id, a]));   // actors bundled in adventures
         // Resolve any remaining token actors from the package's separate Actor compendium(s).
         const needed = new Set();
-        for ( const sc of result.scenes ) for ( const tok of sc.tokens ?? [] ) if ( tok?.actorId && !actorsById.has(tok.actorId) ) needed.add(tok.actorId);
+        for ( const sc of result.scenes ) for ( const tok of sc.tokens ?? [] ) { const id = tok?.actorId ?? tok?.delta?._id; if ( id && !actorsById.has(id) ) needed.add(id); }
         if ( needed.size ) {
           for ( const actorDir of actorPacksByPackage.get(pack.packageId) ?? [] ) {
             if ( !needed.size ) break;

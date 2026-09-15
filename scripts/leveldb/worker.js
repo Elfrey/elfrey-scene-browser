@@ -42,7 +42,7 @@ self.addEventListener("message", async ({ data }) => {
       for ( const sc of result.scenes ) {
         const target = (embedOption === true) || (embedOption instanceof Set && embedOption.has(sc._id));
         if ( !target ) continue;
-        for ( const tok of sc.tokens ?? [] ) if ( tok?.actorId ) wanted.add(tok.actorId);
+        for ( const tok of sc.tokens ?? [] ) { const id = tok?.actorId ?? tok?.delta?._id; if ( id ) wanted.add(id); }
       }
       actors = result.actors.filter(a => wanted.has(a._id));
     }

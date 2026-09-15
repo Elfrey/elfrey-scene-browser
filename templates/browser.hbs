@@ -55,7 +55,10 @@
   {{#if cache.empty}}<p class="notification info esb-banner">{{localize "ESB.Notices.CacheEmpty"}}</p>{{/if}}
 
   <div class="esb-body">
-    <nav class="esb-tree-pane"><div class="esb-tree"></div></nav>
+    <nav class="esb-tree-pane">
+      <div class="esb-tree-filter"><input type="search" name="tree-filter" placeholder="{{localize "ESB.TreeFilterPlaceholder"}}" autocomplete="off"></div>
+      <div class="esb-tree"></div>
+    </nav>
     <div class="esb-grid-pane">
       <div class="esb-grid"></div>
       <div class="esb-sentinel"></div>

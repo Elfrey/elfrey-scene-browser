@@ -106,6 +106,7 @@
       "StaleFiles": "{count} superseded cache file(s) can be deleted by hand from {dir} (Foundry does not let a module delete files)."
     },
     "SearchPlaceholder": "Search scenes…",
+    "TreeFilterPlaceholder": "Filter sources…",
     "ShownCount": "{shown} of {total}",
     "InactiveShort": "modules off",
     "Tree": {

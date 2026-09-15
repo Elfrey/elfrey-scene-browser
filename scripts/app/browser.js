@@ -11,7 +11,7 @@ import { listScenePackSources, summarizeSources } from "../sources.js";
 import { SceneCache, filePicker } from "../cache.js";
 import { SceneIndexer } from "../indexer.js";
 import { buildModel } from "../model.js";
-import { tokenize, matchesTokens } from "../search.js";
+import { normalize, tokenize, matchesTokens } from "../search.js";
 import { passes, anyActive, comparator, systemsIn } from "../filters.js";
 import * as actions from "./actions.js";
 import { IndexingDialog } from "./indexing-dialog.js";
@@ -45,6 +45,15 @@ export class SceneBrowserApp extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @type {{tree:object[],scenes:object[],stats:object,nodeIndex:Map}|null} */ model = null;
 
   #query = "";
+  /** Text filter over the source tree (node labels), independent of the scene search. */
+  #treeQuery = "";
+  /** @type {Set<string>|null} node ids the tree filter keeps visible (matches + ancestors + descendants), or null when off. */
+  #treeVisible = null;
+  /** @type {Map<string,number>} last scene counts per node (for combining with the tree filter). */
+  #treeCounts = new Map();
+  /** Whether the last scene pass was searching/filtering (hides empty branches). */
+  #treeSearching = false;
+  #treeFilterTimer = null;
   /** @type {Set<string>} scoped node ids (union) */
   #scopes = new Set();
   #filters = { status: "", grid: "", size: "", content: "", system: "" };
@@ -145,6 +154,13 @@ export class SceneBrowserApp extends HandlebarsApplicationMixin(ApplicationV2) {
       this.#searchTimer = setTimeout(() => this.#applySearch(ev.target.value), 150);
     });
 
+    const treeFilter = root.querySelector('input[name="tree-filter"]');
+    treeFilter.value = this.#treeQuery;
+    treeFilter.addEventListener("input", ev => {
+      clearTimeout(this.#treeFilterTimer);
+      this.#treeFilterTimer = setTimeout(() => this.#applyTreeFilter(ev.target.value), 150);
+    });
+
     this.#treeEl.addEventListener("click", ev => this.#onTreeClick(ev));
     this.#gridEl.addEventListener("click", ev => this.#onGridClick(ev));
     this.#detailsEl.addEventListener("click", ev => this.#onDetailsClick(ev));
@@ -161,6 +177,7 @@ export class SceneBrowserApp extends HandlebarsApplicationMixin(ApplicationV2) {
     sortSel.addEventListener("change", () => { this.#sort = sortSel.value; this.#persist(); this.#refilter(); });
 
     this.#buildTree();
+    this.#computeTreeVisible(this.#treeQuery);
     this.#refilter();
     this.#renderScopes();
 
@@ -229,6 +246,7 @@ export class SceneBrowserApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const label = document.createElement("span");
     label.className = "esb-node-label";
     label.textContent = node.label;
+    label.title = node.label;   // full name on hover (labels are truncated with ellipsis)
     row.append(label);
 
     const count = document.createElement("span");
@@ -370,28 +388,61 @@ export class SceneBrowserApp extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   #updateTreeCounts(counts, searching) {
+    this.#treeCounts = counts;
+    this.#treeSearching = searching;
+    this.#applyTreeVisibility();
+  }
+
+  /**
+   * Update counts and node visibility from both effects: the scene search/filters (hide empty branches)
+   * and the tree-source filter (keep only matching nodes, their ancestors and their descendants).
+   */
+  #applyTreeVisibility() {
+    const counts = this.#treeCounts;
+    const searching = this.#treeSearching;
+    const tv = this.#treeVisible;
     for ( const el of this.#treeEl.querySelectorAll(".esb-node") ) {
       const id = el.dataset.id;
       const n = counts.get(id) ?? 0;
       const countEl = el.querySelector(":scope > .esb-node-row > .esb-node-count");
       if ( countEl ) countEl.textContent = n ? String(n) : "";
-      // While searching, hide empty branches and auto-expand matching ones.
-      if ( searching ) {
-        el.hidden = n === 0;
-        const kids = el.querySelector(":scope > .esb-node-children");
-        const twisty = el.querySelector(":scope > .esb-node-row > .esb-twisty");
-        if ( kids && n > 0 ) {
-          kids.hidden = false;
-          if ( twisty && !twisty.classList.contains("esb-twisty-empty") ) twisty.classList.replace("fa-caret-right", "fa-caret-down");
-        }
-      } else {
-        el.hidden = false;
-        const kids = el.querySelector(":scope > .esb-node-children");
-        const twisty = el.querySelector(":scope > .esb-node-row > .esb-twisty");
-        if ( kids ) kids.hidden = !this.#expanded.has(id);
-        if ( twisty && !twisty.classList.contains("esb-twisty-empty") ) twisty.className = `esb-twisty fa-solid ${this.#expanded.has(id) ? "fa-caret-down" : "fa-caret-right"}`;
+      const kids = el.querySelector(":scope > .esb-node-children");
+      const twisty = el.querySelector(":scope > .esb-node-row > .esb-twisty");
+      // Hidden if the scene pass empties it, or the tree filter excludes it.
+      el.hidden = (searching && n === 0) || (tv !== null && !tv.has(id));
+      // Auto-expand branches that lead to matches (search hits or tree-filter matches).
+      const forceOpen = (searching && n > 0) || (tv !== null && tv.has(id));
+      if ( kids ) kids.hidden = forceOpen ? false : !this.#expanded.has(id);
+      if ( twisty && !twisty.classList.contains("esb-twisty-empty") ) {
+        const open = forceOpen || this.#expanded.has(id);
+        twisty.className = `esb-twisty fa-solid ${open ? "fa-caret-down" : "fa-caret-right"}`;
       }
     }
+  }
+
+  /** Recompute which tree nodes the source filter keeps visible (no DOM changes). */
+  #computeTreeVisible(value) {
+    this.#treeQuery = value.trim();
+    const tokens = tokenize(this.#treeQuery);
+    if ( !tokens.length ) { this.#treeVisible = null; return; }
+    const index = this.model.nodeIndex;
+    const matched = new Set();
+    for ( const [id, node] of index ) {
+      if ( matchesTokens(normalize(node.label), tokens) ) matched.add(id);
+    }
+    const visible = new Set();
+    // A node is kept if it is a match or lies below one (its path holds a match)…
+    for ( const [id, node] of index ) {
+      if ( node.path.some(pid => matched.has(pid)) ) visible.add(id);
+    }
+    // …and every ancestor of a match, so matches stay reachable from the root.
+    for ( const m of matched ) for ( const pid of index.get(m).path ) visible.add(pid);
+    this.#treeVisible = visible;
+  }
+
+  #applyTreeFilter(value) {
+    this.#computeTreeVisible(value);
+    this.#applyTreeVisibility();
   }
 
   /* ------------------------------ grid ------------------------------ */

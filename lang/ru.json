@@ -106,6 +106,7 @@
       "StaleFiles": "Устаревших файлов кэша: {count}. Их можно удалить вручную из {dir} (Foundry не даёт модулю удалять файлы)."
     },
     "SearchPlaceholder": "Поиск сцен…",
+    "TreeFilterPlaceholder": "Фильтр источников…",
     "ShownCount": "{shown} из {total}",
     "InactiveShort": "модулей выкл.",
     "Tree": {

@@ -74,6 +74,7 @@
     </span>
     <div class="esb-toolbar-actions">
       <button type="button" data-action="refresh" data-tooltip="{{localize "ESB.Actions.Refresh"}}"><i class="fa-solid fa-rotate" inert></i></button>
+      {{#if isV14}}<button type="button" data-action="buildFromModules" data-tooltip="{{localize "ESB.Build.ButtonHint"}}"><i class="fa-solid fa-toggle-on" inert></i> {{localize "ESB.Build.Button"}}</button>{{/if}}
       <button type="button" data-action="index"><i class="fa-solid fa-magnifying-glass-chart" inert></i> {{localize "ESB.Actions.Index"}}</button>
     </div>
   </footer>

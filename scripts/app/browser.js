@@ -29,7 +29,8 @@ export class SceneBrowserApp extends HandlebarsApplicationMixin(ApplicationV2) {
     position: { width: 1180, height: 760 },
     actions: {
       index: SceneBrowserApp.#onIndex,
-      refresh: SceneBrowserApp.#onRefresh
+      refresh: SceneBrowserApp.#onRefresh,
+      buildFromModules: SceneBrowserApp.#onBuildFromModules
     }
   };
 
@@ -84,7 +85,8 @@ export class SceneBrowserApp extends HandlebarsApplicationMixin(ApplicationV2) {
         scenes: totals.scenes, ok: totals.ok, errors: totals.errors,
         staleFiles: this.cache.staleFiles.length, dir: `Data/${this.cache.packsDir}`
       },
-      inactiveModules: stats.inactiveModules
+      inactiveModules: stats.inactiveModules,
+      isV14: Number(game.version?.split(".")[0]) >= 14
     };
   }
 
@@ -670,6 +672,11 @@ export class SceneBrowserApp extends HandlebarsApplicationMixin(ApplicationV2) {
   static async #onRefresh() {
     await this.cache?.reload();
     this.render();
+  }
+
+  static async #onBuildFromModules() {
+    const { openBuildDialog } = await import("../buildcache.js");
+    await openBuildDialog();
   }
 
   /** @override */

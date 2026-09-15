@@ -63,7 +63,8 @@ async function readDormantScene(rec) {
 /** Fetch a scene document (and its actor sidecar) pre-built into the cache folder, or null if not there. */
 async function fetchPrebuiltScene(rec) {
   const dir = SceneCache.configuredDir;
-  const base = `${dir}/scenes/${safeName(rec.packCollection)}/${safeName(rec.sceneId)}`;
+  const sceneDir = rec.scenesPath ? `${dir}/${rec.scenesPath}` : `${dir}/scenes/${safeName(rec.packCollection)}`;
+  const base = `${sceneDir}/${safeName(rec.sceneId)}`;
   let scene;
   try {
     const response = await fetch(dataRoute(`${base}.json`), { cache: "no-store", credentials: "same-origin" });

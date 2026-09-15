@@ -122,3 +122,13 @@
 
 /* Cache dialog checkbox */
 .esb-dialog-check { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; }
+
+/* Build-from-modules dialog */
+.esb-mod-list { max-height: 40vh; overflow: auto; border: 1px solid var(--color-border-light-tertiary, rgba(128,128,128,0.3)); border-radius: 4px; padding: 0.3rem; }
+.esb-mod-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.2rem 0.3rem; }
+.esb-mod-row:hover { background: var(--color-hover, rgba(128,128,128,0.12)); }
+.esb-mod-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.esb-mod-state { font-size: 11px; padding: 0 0.35rem; border-radius: 3px; border: 1px solid currentColor; }
+.esb-mod-state.on { color: var(--color-level-success, #4caf50); }
+.esb-mod-state.off { color: var(--color-text-secondary, #999); }
+.esb-mod-meta { font-size: 11px; color: var(--color-text-secondary, #999); }

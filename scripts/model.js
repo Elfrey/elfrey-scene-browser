@@ -138,6 +138,7 @@ function toRecord(s, ctx) {
     advId: s.advId ?? null,
     advName: s.advName ?? null,
     sceneId: s._id,
+    scenesPath: ctx.scenesPath ?? null,
     _folder: s.folder ?? null,
     nodeId: ctx.nodeId
   };
@@ -256,7 +257,7 @@ export async function buildModel(cache) {
         ? packNode.ensureChild(`adv:${source.collection}:${advId}`, "adventure", g.name || game.i18n.localize("ESB.Tree.Adventure"), {})
         : packNode;
       const scope = advId ? `${source.collection}:${advId}` : source.collection;
-      const recs = g.scenes.map(sc => toRecord(sc, { origin, source, uuid: getUuid(sc), nodeId: container.id }));
+      const recs = g.scenes.map(sc => toRecord(sc, { origin, source, uuid: getUuid(sc), nodeId: container.id, scenesPath: cached?.scenesPath ?? null }));
       for ( const r of recs ) { scenes.push(r); precomputeSearch(r, [...trail, ...(advId ? [g.name] : [])]); }
       buildFolderTree(container, scope, g.folders, recs);
     }

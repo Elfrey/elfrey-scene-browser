@@ -13,7 +13,8 @@ export const SETTINGS = Object.freeze({
   rememberState: "rememberState",
   showInactive: "showInactive",
   uiState: "uiState",
-  hideCacheWarning: "hideCacheWarning"
+  hideCacheWarning: "hideCacheWarning",
+  pendingBuild: "pendingBuild"
 });
 
 export const log = (...args) => console.log(`${MODULE_ID} |`, ...args);
@@ -77,6 +78,12 @@ export function registerSettings() {
     config: false,
     type: Object,
     default: {}
+  });
+  game.settings.register(MODULE_ID, SETTINGS.pendingBuild, {
+    scope: "client",
+    config: false,
+    type: Object,
+    default: null
   });
   game.settings.register(MODULE_ID, SETTINGS.hideCacheWarning, {
     name: "ESB.Settings.HideCacheWarning.Name",

@@ -40,6 +40,7 @@ export function safeName(collection) {
  * @property {object|null} signature
  * @property {object[]} folders
  * @property {object[]} scenes
+ * @property {string} [scenesPath]   Cache-relative dir holding full-scene docs (defaults to "scenes/<collection>")
  * @property {string[]} warnings
  * @property {string} [file]   Data-relative path of the file this entry was loaded from
  * @property {number} [ts]     Timestamp encoded in the file name
@@ -169,6 +170,32 @@ export class SceneCache {
         if ( !/EEXIST|exists/i.test(err?.message ?? "") ) throw err;
       }
     }
+  }
+
+  /** Create a directory (and its parents) under the cache dir. `relDir` is relative to Data. */
+  async ensureDir(relDir) {
+    const fp = filePicker();
+    let cur = "";
+    for ( const part of relDir.split("/") ) {
+      cur = cur ? `${cur}/${part}` : part;
+      try { await fp.createDirectory("data", cur); }
+      catch ( err ) { if ( !/EEXIST|exists/i.test(err?.message ?? "") ) throw err; }
+    }
+  }
+
+  /**
+   * Upload a text file into a directory under Data (creating the directory tree).
+   * @param {string} relDir     Directory relative to Data
+   * @param {string} filename
+   * @param {string} content
+   * @returns {Promise<string>}  The uploaded file's Data-relative path
+   */
+  async uploadInto(relDir, filename, content) {
+    await this.ensureDir(relDir);
+    const file = new File([content], filename, { type: "application/json" });
+    const response = await filePicker().upload("data", relDir, file, {}, { notify: false });
+    if ( !response?.path ) throw new Error(game.i18n.localize("ESB.Errors.UploadFailed"));
+    return decodeURIComponent(response.path);
   }
 
   /**

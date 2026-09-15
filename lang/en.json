@@ -207,6 +207,21 @@
       "Title": "Scene Browser — cache",
       "DontShowAgain": "Don't show this again",
       "Ok": "Got it"
+    },
+    "Build": {
+      "Title": "Build cache from modules",
+      "Button": "From modules",
+      "ButtonHint": "Build the cache by temporarily enabling modules (Foundry v14 fallback)",
+      "Intro": "Pick installed modules with scenes. Enabled ones are indexed right away; disabled ones are enabled, indexed, then disabled again (two world reloads).",
+      "Warning": "Enabling a module runs its code. Do this on an empty/scratch world.",
+      "Start": "Build",
+      "NoModules": "No installed modules ship scenes.",
+      "IndexingNow": "Indexing modules…",
+      "Enabling": "Enabling modules and reloading…",
+      "Restoring": "Cache built. Restoring modules and reloading…",
+      "ConfirmEnable": "Enable {count} module(s), reload, index, then restore? The world will reload twice.",
+      "Result": "Indexed {ok} pack(s), {scenes} scenes, {failed} failed.",
+      "Done": "Done. Press Refresh to see the scenes."
     }
   }
 }

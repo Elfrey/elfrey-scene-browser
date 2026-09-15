@@ -5,6 +5,7 @@ import { MODULE_ID, SETTINGS, registerSettings, getSetting, setSetting, log } fr
 import { SceneBrowserApp } from "./app/browser.js";
 import { listScenePackSources, summarizeSources } from "./sources.js";
 import { SceneCache, filePicker } from "./cache.js";
+import { resumePendingBuild } from "./buildcache.js";
 
 Hooks.once("init", () => {
   registerSettings();
@@ -25,13 +26,14 @@ Hooks.once("ready", () => {
   mod.api = {
     open: options => SceneBrowserApp.open(options),
     get app() { return SceneBrowserApp.instance; },
+    buildCacheFromModules: () => import("./buildcache.js").then(m => m.openBuildDialog()),
     listScenePackSources,
     summarizeSources
   };
   if ( game.user.isGM ) {
     const s = summarizeSources();
     log(`ready — ${s.packs} scene packs (${s.livePacks} live, ${s.dormantPacks} dormant), ${s.modules.length} modules with scenes`);
-    warnIfCacheStale();
+    resumePendingBuild().then(() => warnIfCacheStale());
   }
 });
 

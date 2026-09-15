@@ -132,3 +132,7 @@
 .esb-mod-state.on { color: var(--color-level-success, #4caf50); }
 .esb-mod-state.off { color: var(--color-text-secondary, #999); }
 .esb-mod-meta { font-size: 11px; color: var(--color-text-secondary, #999); }
+
+.esb-select-actions { margin: 0.2rem 0 0.3rem; font-size: var(--font-size-12, 12px); }
+.esb-select-actions a { cursor: pointer; text-decoration: underline; }
+.esb-wait-msg { display: flex; align-items: center; gap: 0.5rem; }

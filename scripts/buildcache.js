@@ -52,6 +52,10 @@ export async function openBuildDialog() {
   const content = `
     <p>${game.i18n.localize("ESB.Build.Intro")}</p>
     <p class="notification warning" style="margin:.3rem 0">${game.i18n.localize("ESB.Build.Warning")}</p>
+    <div class="esb-select-actions">
+      <a data-esb="all">${game.i18n.localize("ESB.Build.SelectAll")}</a> ·
+      <a data-esb="none">${game.i18n.localize("ESB.Build.SelectNone")}</a>
+    </div>
     <div class="esb-mod-list">${rows}</div>`;
 
   let picked = null;
@@ -60,6 +64,12 @@ export async function openBuildDialog() {
       window: { title: game.i18n.localize("ESB.Build.Title"), icon: "fa-solid fa-database" },
       position: { width: 560, height: "auto" },
       content,
+      render: (event, dialog) => {
+        const root = dialog.element;
+        const setAll = value => root.querySelectorAll('input[name="mod"]').forEach(cb => { cb.checked = value; });
+        root.querySelector('[data-esb="all"]')?.addEventListener("click", () => setAll(true));
+        root.querySelector('[data-esb="none"]')?.addEventListener("click", () => setAll(false));
+      },
       ok: {
         label: game.i18n.localize("ESB.Build.Start"),
         callback: (event, button) => [...button.form.querySelectorAll('input[name="mod"]:checked')].map(i => i.value)
@@ -83,8 +93,8 @@ export async function openBuildDialog() {
     await startOrchestration(toEnable);
   } else if ( enabledNow.length ) {
     ui.notifications.info(game.i18n.localize("ESB.Build.Done"));
-    SceneBrowserRefresh();
   }
+  await refreshBrowser();
 }
 
 /** Enable the chosen modules and reload; indexing resumes on the next load. */
@@ -119,7 +129,7 @@ export async function resumePendingBuild() {
 
   try {
     const cache = await SceneCache.load();
-    await runIndex(pending.collections, game.i18n.localize("ESB.Build.IndexingNow"), cache);
+    await runIndex(pending.collections, game.i18n.localize("ESB.Build.WaitTitle"), cache, { keepWindow: true, message: game.i18n.localize("ESB.Build.WaitMessage") });
   } catch ( err ) {
     console.error(`${MODULE_ID} |`, err);
   } finally {
@@ -133,23 +143,50 @@ export async function resumePendingBuild() {
 
 /* ------------------------------ indexing ------------------------------ */
 
-async function runIndex(collections, message, cache) {
+async function runIndex(collections, title, cache, { keepWindow = false, message } = {}) {
   if ( !collections.length ) return;
   cache ??= await SceneCache.load();
-  ui.notifications.info(`${message} (${collections.length})`);
-  const results = await apiIndexPacks(collections, cache, {
-    onProgress: p => { if ( p.phase === "written" ) log(`indexed ${p.done}/${p.total}: ${p.collection}`); }
-  });
-  const ok = results.filter(r => r.status === "ok");
-  const failed = results.filter(r => r.status !== "ok");
-  const scenes = ok.reduce((n, r) => n + (r.scenes ?? 0), 0);
-  if ( failed.length ) ui.notifications.warn(game.i18n.format("ESB.Build.Result", { ok: ok.length, scenes, failed: failed.length }));
-  else ui.notifications.info(game.i18n.format("ESB.Build.Result", { ok: ok.length, scenes, failed: 0 }));
-  for ( const f of failed ) warn(`index failed: ${f.collection}: ${f.error}`);
+  const wait = await openWaitDialog(title, message ?? game.i18n.format("ESB.Build.Progress", { done: 0, total: collections.length, label: "" }));
+  try {
+    const results = await apiIndexPacks(collections, cache, {
+      onProgress: p => {
+        if ( message ) return;   // fixed wait message (resume): don't overwrite with progress
+        wait.update(game.i18n.format("ESB.Build.Progress", { done: p.done ?? 0, total: p.total, label: p.label ?? p.collection ?? "" }));
+      }
+    });
+    const ok = results.filter(r => r.status === "ok");
+    const failed = results.filter(r => r.status !== "ok");
+    const scenes = ok.reduce((n, r) => n + (r.scenes ?? 0), 0);
+    for ( const f of failed ) warn(`index failed: ${f.collection}: ${f.error}`);
+    if ( !keepWindow ) {
+      if ( failed.length ) ui.notifications.warn(game.i18n.format("ESB.Build.Result", { ok: ok.length, scenes, failed: failed.length }));
+      else ui.notifications.info(game.i18n.format("ESB.Build.Result", { ok: ok.length, scenes, failed: 0 }));
+    }
+  } finally {
+    if ( !keepWindow ) wait.close();
+  }
 }
 
-/** Refresh an open browser window so newly indexed scenes appear. */
-function SceneBrowserRefresh() {
+/** A small modal window shown while indexing runs; the caller updates or closes it. */
+async function openWaitDialog(title, message) {
+  const dialog = new foundry.applications.api.DialogV2({
+    window: { title, icon: "fa-solid fa-database" },
+    modal: true,
+    content: `<p class="esb-wait-msg"><i class="fa-solid fa-spinner fa-spin" inert></i> ${message}</p>`,
+    buttons: [{ action: "hide", label: game.i18n.localize("ESB.Build.Hide"), icon: "fa-solid fa-eye-slash" }]
+  });
+  await dialog.render(true);
+  return {
+    dialog,
+    update: text => { const el = dialog.element?.querySelector(".esb-wait-msg"); if ( el ) el.innerHTML = `<i class="fa-solid fa-spinner fa-spin" inert></i> ${text}`; },
+    close: () => { try { dialog.close(); } catch ( err ) {} }
+  };
+}
+
+/** Refresh an open browser window (reloading the cache from disk) so newly indexed scenes appear. */
+async function refreshBrowser() {
   const app = game.modules.get(MODULE_ID)?.api?.app;
-  app?.render();
+  if ( !app ) return;
+  app.cache = null;   // force _prepareContext to reload the cache
+  await app.render();
 }

@@ -221,7 +221,13 @@
       "Restoring": "Cache built. Restoring modules and reloading…",
       "ConfirmEnable": "Enable {count} module(s), reload, index, then restore? The world will reload twice.",
       "Result": "Indexed {ok} pack(s), {scenes} scenes, {failed} failed.",
-      "Done": "Done. Press Refresh to see the scenes."
+      "Done": "Done. Press Refresh to see the scenes.",
+      "SelectAll": "Select all",
+      "SelectNone": "Deselect all",
+      "Hide": "Hide",
+      "Progress": "Indexing {done}/{total}… {label}",
+      "WaitTitle": "Building scene cache",
+      "WaitMessage": "Indexing the enabled modules. Please wait — the world will reload once more when it's done. Don't close Foundry."
     }
   }
 }
